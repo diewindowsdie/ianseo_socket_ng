@@ -1,4 +1,5 @@
 var WebSocketServer = require('websocket').server;
+var http = require("http");
 var express = require('express');
 var crypto = require('crypto');
 const url = require('url');
@@ -23,15 +24,24 @@ process.argv.forEach(function (val, index, array) {
 });
 
 const winston = require('winston');
-const http = require("http");
-const logger = new (winston.Logger)({
+const colorizer = winston.format.colorize();
+const logger = winston.createLogger({
     transports: [
-        // colorize the output to the console
         new (winston.transports.Console)({
-            timestamp: function() {
-                return Date.now();
-            },
+            format: winston.format.combine(
+                winston.format.timestamp(),
+                winston.format.align(),
+                winston.format.printf((msg) => {
+                        const {
+                            timestamp, level, message, ...args
+                        } = msg;
+
+                        return colorizer.colorize(level, `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`);
+                    })
+            ),
+            timestamp: true,
             level: (beVerbose ? 'verbose':'info'),
+            prettyPrint: true,
             colorize:true
         }),
         new (require('winston-daily-rotate-file'))({
@@ -39,7 +49,7 @@ const logger = new (winston.Logger)({
             timestamp: function() {
                 return Date.now();
             },
-            datePattern: 'yyyy-MM-dd',
+            datePattern: 'dd-MM-yyyy',
             prepend: true,
             /*            formatter: function(options) {
              // Return string will be passed to logger.
@@ -76,12 +86,12 @@ if(!serverPassed) {
     process.exit(1);
 }
 
-
-var app = express.createServer();
-app.listen(listenPort);
+var app = express();
+var httpServer = http.createServer(app);
+httpServer.listen(listenPort);
 
 var wsServer = new WebSocketServer({
-    httpServer: app,
+    httpServer: httpServer,
 
     // Firefox 7 alpha has a bug that drops the
     // connection on large fragmented messages

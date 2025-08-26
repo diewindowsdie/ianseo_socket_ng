@@ -4,12 +4,11 @@
   "author": "Matteo Pisani <e@ianseo.net> (https://www.ianseo.net/)",
   "version": "1.0.0",
   "dependencies": {
-    "express": "^2.5.11",
-    "q": "^1.4.1",
-    "websocket": "^1.0.23",
-    "winston": "^2.3.0",
-    "winston-daily-rotate-file": "^1.4.0",
-    "xml2js": "^0.4.17"
+    "express": "*",
+    "q": "*",
+    "websocket": "*",
+    "winston": "*",
+    "winston-daily-rotate-file": "*"
   },
   "scripts": {
     "start": "node server.js"
