@@ -369,15 +369,14 @@ function notifyMasters(respondToConnection) {
     logger.verbose("Send:" + JSON.stringify(connectedMessage));
     controllerConnections.forEach(connection => send(connection, JSON.stringify(connectedMessage)));
 
-    //уведомление о необходимости перечитать инфу девайсов из базы
-    var devicesReloadMessage = {action: "notify", level: 4};
+    //уведомление о необходимости (для списка девайсов, не результатов!) перечитать инфу девайсов из базы
+    var devicesReloadMessage = {action: "notify", level: 2};
     logger.verbose("Send:" + JSON.stringify(devicesReloadMessage));
     controllerConnections.forEach(connection => send(connection, JSON.stringify(devicesReloadMessage)));
 }
 
 function send(conn, msg) {
     if (conn !== undefined) {
-        logger.verbose("Send message to connection: " + msg);
         conn.sendUTF(msg);
     }
 }
