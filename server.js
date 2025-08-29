@@ -8,8 +8,8 @@ const apiVersion = "1";
 
 // Create the log directory if it does not exist
 const fs = require('fs');
-if (!fs.existsSync(__dirname+'/log')) {
-    fs.mkdirSync(__dirname+'/log');
+if (!fs.existsSync(__dirname + '/log')) {
+    fs.mkdirSync(__dirname + '/log');
 }
 
 var controllers = {};
@@ -32,21 +32,21 @@ const logger = winston.createLogger({
                 winston.format.timestamp(),
                 winston.format.align(),
                 winston.format.printf((msg) => {
-                        const {
-                            timestamp, level, message, ...args
-                        } = msg;
+                    const {
+                        timestamp, level, message, ...args
+                    } = msg;
 
-                        return colorizer.colorize(level, `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`);
-                    })
+                    return colorizer.colorize(level, `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`);
+                })
             ),
             timestamp: true,
-            level: (beVerbose ? 'verbose':'info'),
+            level: (beVerbose ? 'verbose' : 'info'),
             prettyPrint: true,
-            colorize:true
+            colorize: true
         }),
         new (require('winston-daily-rotate-file'))({
-            filename: __dirname+'/log/-socket.log',
-            timestamp: function() {
+            filename: __dirname + '/log/-socket.log',
+            timestamp: function () {
                 return Date.now();
             },
             datePattern: 'dd-MM-yyyy',
@@ -60,27 +60,27 @@ const logger = winston.createLogger({
         })
     ]
 });
-var serverPassed=false;
+var serverPassed = false;
 process.argv.forEach(function (val, index, array) {
-    if(val == '-h' || val == '--help') {
+    if (val == '-h' || val == '--help') {
         const path = require('path');
         console.info("Usage: " + path.basename(process.argv[0]) + ' ' + path.basename(process.argv[1]) + ' -i, --ianseo <ianseo_full_URL> [-p, --port <socket_port>] [-h, --help]');
         process.exit(0);
     }
-    serverPassed=true;
+    serverPassed = true;
 
-    if((val == '-i' || val == '--ianseo') && process.argv[index+1] !== undefined && process.argv[index+1][0] !== '-') {
+    if ((val == '-i' || val == '--ianseo') && process.argv[index + 1] !== undefined && process.argv[index + 1][0] !== '-') {
         serverPassed = true;
-        ianseoServers = process.argv[index+1];
+        ianseoServers = process.argv[index + 1];
         logger.info("Using ianseo server:", ianseoServers)
     }
 
-    if((val == '-p' || val == '--port') && process.argv[index+1] !== undefined) {
-        listenPort=parseInt(process.argv[index+1]);
+    if ((val == '-p' || val == '--port') && process.argv[index + 1] !== undefined) {
+        listenPort = parseInt(process.argv[index + 1]);
     }
 });
 
-if(!serverPassed) {
+if (!serverPassed) {
     const path = require('path');
     console.info("Usage: " + path.basename(process.argv[0]) + ' ' + path.basename(process.argv[1]) + ' -i, --ianseo <ianseo_full_URL> [-p, --port <socket_port>] [-h, --help]');
     process.exit(1);
@@ -99,16 +99,16 @@ var wsServer = new WebSocketServer({
     autoAcceptConnections: true
 });
 
-wsServer.on('connect', function(connection) {
+wsServer.on('connect', function (connection) {
     logger.verbose('ConnectionNotice', {address: connection.remoteAddress, version: connection.webSocketVersion});
 
     // Handle closed connections
-    connection.on('close', function() {
+    connection.on('close', function () {
         logger.verbose('DisconnectionNotice', {address: connection.remoteAddress});
 
         //remove Tablets when connection is lost
         for (cnt in tablets) {
-            if(tablets[cnt].connection === connection) {
+            if (tablets[cnt].connection === connection) {
                 delete tablets[cnt];
                 //тут делался вызов апи, которое ставит у девайса IskDvProConnected=0
                 //единственный метолд в актуальном апи что так делает это handshake, но делать его при дисконнекте девайса кажется странным
@@ -118,36 +118,49 @@ wsServer.on('connect', function(connection) {
 
         //remove Master when connection is lost
         for (cnt in controllers) {
-            if(controllers[cnt].connection === connection) {
+            if (controllers[cnt].connection === connection) {
                 delete controllers[cnt];
             }
         }
     });
 
-    connection.on('message', function(message) {
+    connection.on('message', function (message) {
         var rcvData = JSON.parse(message.utf8Data);
         logger.verbose('ReceivedMSG', {msg: rcvData});
 
-        switch(rcvData.action) {
+        switch (rcvData.action) {
             case 'version':
                 //проверка сервером версии сокета
                 send(connection, JSON.stringify(buildServerMessage("version", {version: version})));
                 break;
             case 'handshake':
-                if(rcvData.mode=='controller') {
+                if (rcvData.mode == 'controller') {
                     //регистрация сервера янсео в сокете
                     var ianseoId = crypto.randomBytes(16).toString("hex");
-                    controllers[ianseoId] = {tournament: rcvData.tournament, version: rcvData.version, connection: connection, device: ianseoId};
+                    controllers[ianseoId] = {
+                        tournament: rcvData.tournament,
+                        version: rcvData.version,
+                        connection: connection,
+                        device: ianseoId
+                    };
                     var message = buildServerMessage("handshakeId", {socketId: ianseoId});
                     send(connection, JSON.stringify(message));
                 } else {
                     //регистрация телефона для ввода данных в сокете
-                    tablets[rcvData.device] = {device: rcvData.device, version: rcvData.version, connection: connection, group:'group_0'};
+                    tablets[rcvData.device] = {
+                        device: rcvData.device,
+                        version: rcvData.version,
+                        connection: connection,
+                        group: 'group_0'
+                    };
                     var http = require('http');
                     var handshakeMessage = JSON.stringify(buildServerRequest(rcvData));
                     logger.verbose('IanseoSend', {url: ianseoServers + '/Api/ISK-NG/', content: handshakeMessage});
                     let options = prepareRequestOptions(ianseoServers);
-                    options.headers = {'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(handshakeMessage)};
+                    options.headers = {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(handshakeMessage)
+                    };
 
                     var handshakeRequest = http.request(options, function (response) {
                         var str = '';
@@ -162,7 +175,7 @@ wsServer.on('connect', function(connection) {
                                     if (tablets[ianseoResponse.device] !== undefined) {
                                         send(tablets[ianseoResponse.device].connection, JSON.stringify(ianseoResponse));
                                     } else {
-                                        logger.error('ErrTabletNotFound', {device: ianseoResponse.device});
+                                        logger.warn("Tablet" + ianseoResponse.device + " is not connected.");
                                     }
                                 });
                             } catch (e) {
@@ -212,7 +225,7 @@ wsServer.on('connect', function(connection) {
             case 'dialog':
             case "reconfigure":
             case "fetchall":
-                handleFromIanseoToPhone(connection, rcvData, message);
+                handleFromIanseoToPhone(connection, rcvData);
                 break;
             case 'info':
                 if (rcvData.sender !== undefined) {
@@ -220,7 +233,7 @@ wsServer.on('connect', function(connection) {
                         if (controller === rcvData.sender) {
                             logger.verbose("Passing info request from ianseo[" + rcvData.sender + "] to phone")
                             //это сообщение от янсео телефону
-                            handleFromIanseoToPhone(connection, rcvData, message);
+                            handleFromIanseoToPhone(connection, rcvData);
                             break;
                         }
                     }
@@ -240,14 +253,14 @@ wsServer.on('connect', function(connection) {
                 //запрос notify надо прокинуть как есть по всем контроллерам, кроме отправившего
                 for (c in controllers) {
                     if (controllers[c].connection !== connection) {
-                        send(controllers[c].connection, rcvData);
+                        send(controllers[c].connection, JSON.stringify(rcvData));
                     }
                 }
                 break;
             case 'OVA':
                 var http = require('http');
-                logger.verbose('OVA', {url: ianseoServers+'Api/JSON/'+rcvData.url});
-                var req = http.request(url.parse(ianseoServers+'Api/JSON/'+rcvData.url), function(response) {
+                logger.verbose('OVA', {url: ianseoServers + 'Api/JSON/' + rcvData.url});
+                var req = http.request(url.parse(ianseoServers + 'Api/JSON/' + rcvData.url), function (response) {
                     var str = '';
                     response.on('data', function (chunk) {
                         str += chunk;
@@ -257,7 +270,7 @@ wsServer.on('connect', function(connection) {
                     });
                 });
                 req.on('error', function (e) {
-                    logger.error('HttpError', {error: JSON.stringify(e), device : rcvData.device, message:message});
+                    logger.error('HttpError', {error: JSON.stringify(e), device: rcvData.device, message: message});
                 });
                 req.end();
                 break;
@@ -274,24 +287,12 @@ function requestInfoFromDevice(deviceConnection, deviceUUID) {
     }
 }
 
-function handleFromIanseoToPhone(ianseoConnection, rcvData, message) {
+function handleFromIanseoToPhone(ianseoConnection, rcvData) {
     //запросы от янсео отправляются по адресу нужного телефона
-    var newMsg = message.utf8Data;
-    if(rcvData.device=='ask-all') {
-        for(var k in tablets) {
-            send(tablets[k].connection,newMsg);
-        }
+    if (tablets[rcvData.device] !== undefined) {
+        send(tablets[rcvData.device].connection, JSON.stringify(rcvData));
     } else {
-        if(tablets[rcvData.device] !== undefined) {
-            if(rcvData.group) {
-                tablets[rcvData.device].group=rcvData.group;
-            } else if(!tablets[rcvData.device].group) {
-                tablets[rcvData.device].group='group_0';
-            }
-            send(tablets[rcvData.device].connection, newMsg);
-        } else {
-            ianseoConnection.sendUTF('Tablet ' + rcvData.device + ' is not connected!');
-        }
+        logger.warn("Tablet " + rcvData.device + " is not connected.");
     }
 }
 
@@ -321,7 +322,7 @@ function handleFromPhoneToIanseo(phoneConnection, rcvData, message) {
                     if (tablets[ianseoResponse.device] !== undefined) {
                         send(tablets[ianseoResponse.device].connection, JSON.stringify(ianseoResponse));
                     } else {
-                        logger.error('ErrTabletNotFound', {device: ianseoResponse.device});
+                        logger.warn("Tablet" + ianseoResponse.device + " is not connected.");
                     }
                 });
             } catch (e) {
@@ -348,7 +349,7 @@ function handleFromPhoneToIanseo(phoneConnection, rcvData, message) {
 function notifyMasters(respondToConnection) {
     var controllerConnections = [];
     if (respondToConnection !== undefined) {
-        //уведомим попрсивший контроллер об активных телефонах
+        //уведомим попросивший контроллер об активных телефонах
         controllerConnections.push(respondToConnection);
     } else {
         //уведомим всех контроллеров об активных телефонах
@@ -375,7 +376,8 @@ function notifyMasters(respondToConnection) {
 }
 
 function send(conn, msg) {
-    if(conn !== undefined) {
+    if (conn !== undefined) {
+        logger.verbose("Send message to connection: " + msg);
         conn.sendUTF(msg);
     }
 }
@@ -392,11 +394,11 @@ function buildServerRequest(object) {
 
 function prepareRequestOptions(serverUrl) {
     var requestOptions = url.parse(serverUrl);
-    if(requestOptions.protocol == null) {
+    if (requestOptions.protocol == null) {
         requestOptions.protocol = "http:";
-        if(requestOptions.slashes == null) requestOptions.slashes = true;
+        if (requestOptions.slashes == null) requestOptions.slashes = true;
     }
-    if(requestOptions.hostname == null) {
+    if (requestOptions.hostname == null) {
         requestOptions.hostname = requestOptions.pathname;
         requestOptions.path = '/';
         requestOptions.pathname = '/';
