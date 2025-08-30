@@ -14,7 +14,7 @@ if (!fs.existsSync(__dirname + '/log')) {
 
 var controllers = {};
 var tablets = {};
-var ianseoServers = '';
+var ianseoServer = '';
 var listenPort = 12345;
 var beVerbose = false;
 process.argv.forEach(function (val, index, array) {
@@ -71,8 +71,8 @@ process.argv.forEach(function (val, index, array) {
 
     if ((val == '-i' || val == '--ianseo') && process.argv[index + 1] !== undefined && process.argv[index + 1][0] !== '-') {
         serverPassed = true;
-        ianseoServers = process.argv[index + 1];
-        logger.info("Using ianseo server:", ianseoServers)
+        ianseoServer = process.argv[index + 1];
+        logger.info("Using ianseo server: " + ianseoServer)
     }
 
     if ((val == '-p' || val == '--port') && process.argv[index + 1] !== undefined) {
@@ -155,8 +155,8 @@ wsServer.on('connect', function (connection) {
                     };
                     var http = require('http');
                     var handshakeMessage = JSON.stringify(buildServerRequest(rcvData));
-                    logger.verbose('IanseoSend', {url: ianseoServers + '/Api/ISK-NG/', content: handshakeMessage});
-                    let options = prepareRequestOptions(ianseoServers);
+                    logger.verbose('IanseoSend', {url: ianseoServer + '/Api/ISK-NG/', content: handshakeMessage});
+                    let options = prepareRequestOptions(ianseoServer);
                     options.headers = {
                         'Content-Type': 'application/json',
                         'Content-Length': Buffer.byteLength(handshakeMessage)
@@ -198,11 +198,10 @@ wsServer.on('connect', function (connection) {
                     handshakeRequest.write(handshakeMessage);
                     handshakeRequest.end();
                     requestInfoFromDevice(connection, rcvData.device);
-
-                    // notify all masters that a new tablet is there
-                    notifyMasters();
                 }
 
+                // сообщим всем контроллерам о новом клиенте
+                notifyMasters();
                 break;
             case 'deviceconnected':
                 notifyMasters(connection);
@@ -259,8 +258,8 @@ wsServer.on('connect', function (connection) {
                 break;
             case 'OVA':
                 var http = require('http');
-                logger.verbose('OVA', {url: ianseoServers + 'Api/JSON/' + rcvData.url});
-                var req = http.request(url.parse(ianseoServers + 'Api/JSON/' + rcvData.url), function (response) {
+                logger.verbose('OVA', {url: ianseoServer + 'Api/JSON/' + rcvData.url});
+                var req = http.request(url.parse(ianseoServer + 'Api/JSON/' + rcvData.url), function (response) {
                     var str = '';
                     response.on('data', function (chunk) {
                         str += chunk;
@@ -304,8 +303,8 @@ function handleFromPhoneToIanseo(phoneConnection, rcvData, message) {
     //запросы от телефонов заворачиваются в обертку для серверного апи и шлются в янсео (не в коннект контроллера, именно в янсео)
     var http = require('http');
     var wrappedRequest = JSON.stringify(buildServerRequest(rcvData));
-    logger.verbose('IanseoSend', {url: ianseoServers + '/Api/ISK-NG/', content: wrappedRequest});
-    let options = prepareRequestOptions(ianseoServers);
+    logger.verbose('IanseoSend', {url: ianseoServer + '/Api/ISK-NG/', content: wrappedRequest});
+    let options = prepareRequestOptions(ianseoServer);
     options.headers = {'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(wrappedRequest)};
 
     var passedToIanseoRequest = http.request(options, function (response) {
