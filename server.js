@@ -204,7 +204,7 @@ wsServer.on('connect', function (connection) {
                 notifyMasters();
                 break;
             case 'deviceconnected':
-                notifyMasters(connection);
+                notifyMasters(connection, [1, 2]);
 
                 break;
             case 'confirmhash':
@@ -216,7 +216,7 @@ wsServer.on('connect', function (connection) {
             case 'sendall':
             case "lang":
             case 'qrpayload':
-                handleFromPhoneToIanseo(connection, rcvData, message);
+                handleFromPhoneToIanseo(connection, rcvData, message, [1, 4, 8]);
 
                 break;
             case 'setup':
@@ -299,7 +299,7 @@ function handleFromPhoneToIanseoSocket(socketConnection, rcvData, message) {
     send(socketConnection, JSON.stringify(rcvData));
 }
 
-function handleFromPhoneToIanseo(phoneConnection, rcvData, message) {
+function handleFromPhoneToIanseo(phoneConnection, rcvData, message, levels = [1, 4, 8]) {
     //запросы от телефонов заворачиваются в обертку для серверного апи и шлются в янсео (не в коннект контроллера, именно в янсео)
     var http = require('http');
     var wrappedRequest = JSON.stringify(buildServerRequest(rcvData));
@@ -331,7 +331,7 @@ function handleFromPhoneToIanseo(phoneConnection, rcvData, message) {
                     message: message
                 });
             }
-            notifyMasters();
+            notifyMasters(null, levels);
         });
     });
     passedToIanseoRequest.on('error', function (e) {
@@ -345,9 +345,9 @@ function handleFromPhoneToIanseo(phoneConnection, rcvData, message) {
     passedToIanseoRequest.end();
 }
 
-function notifyMasters(respondToConnection) {
+function notifyMasters(respondToConnection, levels = [1, 4, 8]) {
     var controllerConnections = [];
-    if (respondToConnection !== undefined) {
+    if (respondToConnection !== undefined && respondToConnection !== null) {
         //уведомим попросивший контроллер об активных телефонах
         controllerConnections.push(respondToConnection);
     } else {
@@ -364,14 +364,18 @@ function notifyMasters(respondToConnection) {
             devices.push(tablets[tablet].device);
         }
     }
-    var connectedMessage = {action: "notify", level: 1, devicesConnected: devices};
+
+    let level = 0;
+    levels.forEach(lvl => level |= lvl);
+
+    //1 - уведомление со списком подключенных устройств для ввода данных
+    //2 - уведомление о необходимости (для списка девайсов, не результатов!) перечитать инфу девайсов из базы
+    //4 - уведомление о необходимости (и для списка девайсов, и для результатов) перечитать инфу девайсов из базы
+    //8 - уведомление о необходимости (и для списка девайсов, и для результатов) перечитать результаты спортсменов из базы
+    //16 - уведомление о необходимости (для списка девайсов, не результатов!) перечитать результаты спортсменов из базы
+    var connectedMessage = {action: "notify", level: level, devicesConnected: devices};
     logger.verbose("Send:" + JSON.stringify(connectedMessage));
     controllerConnections.forEach(connection => send(connection, JSON.stringify(connectedMessage)));
-
-    //уведомление о необходимости (для списка девайсов, не результатов!) перечитать инфу девайсов из базы
-    var devicesReloadMessage = {action: "notify", level: 2};
-    logger.verbose("Send:" + JSON.stringify(devicesReloadMessage));
-    controllerConnections.forEach(connection => send(connection, JSON.stringify(devicesReloadMessage)));
 }
 
 function send(conn, msg) {
