@@ -1,2 +1,2 @@
 #!/bin/sh
-node ./server.js -s -i https://127.0.0.1
+node ./server.js -s -l /var/log/isk-socket/ -i http://127.0.0.1

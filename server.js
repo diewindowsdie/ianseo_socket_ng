@@ -19,6 +19,7 @@ var ianseoServer = '';
 var listenPort = 12345;
 var beVerbose = false;
 var serviceMode = false;
+var logsPath = __dirname + '/logs';
 process.argv.forEach(function (val, index, array) {
     if (val == '-v' || val == '--verbose') {
         beVerbose = true;
@@ -29,46 +30,59 @@ process.argv.forEach(function (val, index, array) {
         serviceMode = true;
     }
 });
+process.argv.forEach(function (val, index, array) {
+    if (val == '-l' || val == '--logs') {
+        if (process.argv.length > index && process.argv[index + 1] !== undefined)
+        logsPath = process.argv[index + 1];
+    }
+});
+
+//создадим папку под логи, если ее нет
+fs.mkdirSync(logsPath, { recursive: true }, function(error) {
+    console.error("Unable to create logs directory:", error);
+    process.exit(1);
+});
 
 const winston = require('winston');
 const colorizer = winston.format.colorize();
-var winstonTransports = [new (winston.transports.Console)({
+var winstonTransports = [new (require('winston-daily-rotate-file'))({
+    filename: logsPath + "/socket.log",
+    datePattern: 'YYYY-MM-DD',
+    prepend: true,
+    level: 'verbose',
     format: winston.format.combine(
         winston.format.timestamp({
             format: 'YYYY-MM-DD HH:mm:ss.SSS'
         }),
-        winston.format.align(),
         winston.format.printf((msg) => {
             const {
                 timestamp, level, message, ...args
             } = msg;
 
-            return colorizer.colorize(level, `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`);
+            return `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`;
         })
-    ),
-    timestamp: true,
-    level: (beVerbose ? 'verbose' : 'info'),
-    prettyPrint: true,
-    colorize: true
+    )
 })];
+
 if (!serviceMode) {
-    winstonTransports.push(new (require('winston-daily-rotate-file'))({
-        filename: __dirname + '/log/socket.log',
-        datePattern: 'YYYY-MM-DD',
-        prepend: true,
-        level: 'verbose',
+    winstonTransports.push(new (winston.transports.Console)({
         format: winston.format.combine(
             winston.format.timestamp({
                 format: 'YYYY-MM-DD HH:mm:ss.SSS'
             }),
+            winston.format.align(),
             winston.format.printf((msg) => {
                 const {
                     timestamp, level, message, ...args
                 } = msg;
 
-                return `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`;
+                return colorizer.colorize(level, `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`);
             })
-        )
+        ),
+        timestamp: true,
+        level: (beVerbose ? 'verbose' : 'info'),
+        prettyPrint: true,
+        colorize: true
     }));
 }
 const logger = winston.createLogger({
