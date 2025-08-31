@@ -30,7 +30,9 @@ const logger = winston.createLogger({
     transports: [
         new (winston.transports.Console)({
             format: winston.format.combine(
-                winston.format.timestamp(),
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
                 winston.format.align(),
                 winston.format.printf((msg) => {
                     const {
@@ -46,18 +48,22 @@ const logger = winston.createLogger({
             colorize: true
         }),
         new (require('winston-daily-rotate-file'))({
-            filename: __dirname + '/log/-socket.log',
-            timestamp: function () {
-                return Date.now();
-            },
-            datePattern: 'dd-MM-yyyy',
+            filename: __dirname + '/log/socket.log',
+            datePattern: 'YYYY-MM-DD',
             prepend: true,
-            /*            formatter: function(options) {
-             // Return string will be passed to logger.
-             return options.timestamp() +"\t"+options.message;
-             },
-             json: false,*/
-            level: 'verbose'
+            level: 'verbose',
+            format: winston.format.combine(
+                winston.format.timestamp({
+                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
+                }),
+                winston.format.printf((msg) => {
+                    const {
+                        timestamp, level, message, ...args
+                    } = msg;
+
+                    return `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`;
+                })
+            )
         })
     ]
 });
