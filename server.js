@@ -2,6 +2,7 @@ var WebSocketServer = require('websocket').server;
 var http = require("http");
 var express = require('express');
 var crypto = require('crypto');
+var nextControllerIndex = 0;
 const url = require('url');
 const version = '1.1.0';
 const apiVersion = "1";
@@ -141,7 +142,8 @@ wsServer.on('connect', function (connection) {
                         tournament: rcvData.tournament,
                         version: rcvData.version,
                         connection: connection,
-                        device: ianseoId
+                        device: ianseoId,
+                        index: ++nextControllerIndex
                     };
                     var message = buildServerMessage("handshakeId", {socketId: ianseoId});
                     send(connection, JSON.stringify(message));
@@ -346,14 +348,16 @@ function handleFromPhoneToIanseo(phoneConnection, rcvData, message, levels = [1,
 }
 
 function notifyMasters(respondToConnection, levels = [1, 4, 8]) {
-    var controllerConnections = [];
-    if (respondToConnection !== undefined && respondToConnection !== null) {
-        //уведомим попросивший контроллер об активных телефонах
-        controllerConnections.push(respondToConnection);
-    } else {
-        //уведомим всех контроллеров об активных телефонах
-        for (c in controllers) {
-            controllerConnections.push(controllers[c].connection);
+    var controllersToSendTo = [];
+    for (c in controllers) {
+        if (respondToConnection !== undefined && respondToConnection !== null) {
+            //уведомим попросивший контроллер об активных телефонах
+            if (respondToConnection === controllers[c].connection) {
+                controllersToSendTo.push(controllers[c]);
+            }
+        } else {
+            //уведомим всех контроллеров об активных телефонах
+            controllersToSendTo.push(controllers[c]);
         }
     }
 
@@ -373,9 +377,12 @@ function notifyMasters(respondToConnection, levels = [1, 4, 8]) {
     //4 - уведомление о необходимости (и для списка девайсов, и для результатов) перечитать инфу девайсов из базы
     //8 - уведомление о необходимости (и для списка девайсов, и для результатов) перечитать результаты спортсменов из базы
     //16 - уведомление о необходимости (для списка девайсов, не результатов!) перечитать результаты спортсменов из базы
-    var connectedMessage = {action: "notify", level: level, devicesConnected: devices};
-    logger.verbose("Send:" + JSON.stringify(connectedMessage));
-    controllerConnections.forEach(connection => send(connection, JSON.stringify(connectedMessage)));
+
+    controllersToSendTo.forEach(controller => {
+        var message = {action: "notify", level: level, devicesConnected: devices, controllersNo: controller.index};
+        logger.verbose("Sending:" + JSON.stringify(message));
+        send(controller.connection, JSON.stringify(message));
+    });
 }
 
 function send(conn, msg) {
