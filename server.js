@@ -18,54 +18,61 @@ var tablets = {};
 var ianseoServer = '';
 var listenPort = 12345;
 var beVerbose = false;
+var serviceMode = false;
 process.argv.forEach(function (val, index, array) {
     if (val == '-v' || val == '--verbose') {
         beVerbose = true;
     }
 });
+process.argv.forEach(function (val, index, array) {
+    if (val == '-s' || val == '--service') {
+        serviceMode = true;
+    }
+});
 
 const winston = require('winston');
 const colorizer = winston.format.colorize();
-const logger = winston.createLogger({
-    transports: [
-        new (winston.transports.Console)({
-            format: winston.format.combine(
-                winston.format.timestamp({
-                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
-                }),
-                winston.format.align(),
-                winston.format.printf((msg) => {
-                    const {
-                        timestamp, level, message, ...args
-                    } = msg;
-
-                    return colorizer.colorize(level, `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`);
-                })
-            ),
-            timestamp: true,
-            level: (beVerbose ? 'verbose' : 'info'),
-            prettyPrint: true,
-            colorize: true
+var winstonTransports = [new (winston.transports.Console)({
+    format: winston.format.combine(
+        winston.format.timestamp({
+            format: 'YYYY-MM-DD HH:mm:ss.SSS'
         }),
-        new (require('winston-daily-rotate-file'))({
-            filename: __dirname + '/log/socket.log',
-            datePattern: 'YYYY-MM-DD',
-            prepend: true,
-            level: 'verbose',
-            format: winston.format.combine(
-                winston.format.timestamp({
-                    format: 'YYYY-MM-DD HH:mm:ss.SSS'
-                }),
-                winston.format.printf((msg) => {
-                    const {
-                        timestamp, level, message, ...args
-                    } = msg;
+        winston.format.align(),
+        winston.format.printf((msg) => {
+            const {
+                timestamp, level, message, ...args
+            } = msg;
 
-                    return `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`;
-                })
-            )
+            return colorizer.colorize(level, `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`);
         })
-    ]
+    ),
+    timestamp: true,
+    level: (beVerbose ? 'verbose' : 'info'),
+    prettyPrint: true,
+    colorize: true
+})];
+if (!serviceMode) {
+    winstonTransports.push(new (require('winston-daily-rotate-file'))({
+        filename: __dirname + '/log/socket.log',
+        datePattern: 'YYYY-MM-DD',
+        prepend: true,
+        level: 'verbose',
+        format: winston.format.combine(
+            winston.format.timestamp({
+                format: 'YYYY-MM-DD HH:mm:ss.SSS'
+            }),
+            winston.format.printf((msg) => {
+                const {
+                    timestamp, level, message, ...args
+                } = msg;
+
+                return `${timestamp} - ${level}: ${message} ${Object.keys(args).length ? JSON.stringify(args, null, 2) : ''}`;
+            })
+        )
+    }));
+}
+const logger = winston.createLogger({
+    transports: winstonTransports
 });
 var serverPassed = false;
 process.argv.forEach(function (val, index, array) {
