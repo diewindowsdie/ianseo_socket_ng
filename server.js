@@ -49,7 +49,7 @@ var winstonTransports = [new (require('winston-daily-rotate-file'))({
     filename: logsPath + "/socket.log",
     datePattern: 'YYYY-MM-DD',
     prepend: true,
-    level: 'verbose',
+    level: (beVerbose ? 'verbose' : 'info'),
     format: winston.format.combine(
         winston.format.timestamp({
             format: 'YYYY-MM-DD HH:mm:ss.SSS'
