@@ -168,7 +168,11 @@ wsServer.on('connect', function (connection) {
                         connection: connection,
                         group: 'group_0'
                     };
-                    var http = require('http');
+
+                    var client = require('http');
+                    if (ianseoServer.startsWith("https")) {
+                        client = require("https");
+                    }
                     var handshakeMessage = JSON.stringify(buildServerRequest(rcvData));
                     logger.verbose('IanseoSend', {url: ianseoServer + '/Api/ISK-NG/', content: handshakeMessage});
                     let options = prepareRequestOptions(ianseoServer);
@@ -177,7 +181,7 @@ wsServer.on('connect', function (connection) {
                         'Content-Length': Buffer.byteLength(handshakeMessage)
                     };
 
-                    var handshakeRequest = http.request(options, function (response) {
+                    var handshakeRequest = client.request(options, function (response) {
                         var str = '';
                         response.on('data', function (chunk) {
                             str += chunk;
@@ -316,13 +320,16 @@ function handleFromPhoneToIanseoSocket(socketConnection, rcvData, message) {
 
 function handleFromPhoneToIanseo(phoneConnection, rcvData, message, levels = [1, 4, 8]) {
     //запросы от телефонов заворачиваются в обертку для серверного апи и шлются в янсео (не в коннект контроллера, именно в янсео)
-    var http = require('http');
+    var client = require('http');
+    if (ianseoServer.startsWith("https")) {
+        client = require("https");
+    }
     var wrappedRequest = JSON.stringify(buildServerRequest(rcvData));
     logger.verbose('IanseoSend', {url: ianseoServer + '/Api/ISK-NG/', content: wrappedRequest});
     let options = prepareRequestOptions(ianseoServer);
     options.headers = {'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(wrappedRequest)};
 
-    var passedToIanseoRequest = http.request(options, function (response) {
+    var passedToIanseoRequest = client.request(options, function (response) {
         var str = '';
         response.on('data', function (chunk) {
             str += chunk;
