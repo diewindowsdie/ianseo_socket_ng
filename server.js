@@ -413,7 +413,7 @@ function notifyMasters(respondToConnection, levels = [1, 4, 8]) {
     //16 - уведомление о необходимости (для списка девайсов, не результатов!) перечитать результаты спортсменов из базы
 
     controllersToSendTo.forEach(controller => {
-        var message = {action: "notify", level: level, devicesConnected: devices, controllersNo: controller.index};
+        var message = {action: "notify", level: level, devicesConnected: devices, controllersNo: Object.keys(controllers).length};
         logger.verbose("Sending:" + JSON.stringify(message));
         send(controller.connection, JSON.stringify(message));
     });
