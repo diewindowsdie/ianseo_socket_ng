@@ -134,10 +134,12 @@ var wsServer = new WebSocketServer({
     // Firefox 7 alpha has a bug that drops the
     // connection on large fragmented messages
     fragmentOutgoingMessages: false,
-    autoAcceptConnections: true
+    autoAcceptConnections: false
 });
 
-wsServer.on('connect', function (connection) {
+wsServer.on('request', function (request) {
+    const connection = request.accept(null, request.origin);
+
     logger.verbose('ConnectionNotice', {address: connection.remoteAddress, version: connection.webSocketVersion});
 
     // Handle closed connections
