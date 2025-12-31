@@ -36,6 +36,12 @@ process.argv.forEach(function (val, index, array) {
         logsPath = process.argv[index + 1];
     }
 });
+process.argv.forEach(function (val, index) {
+    if (val == '-p' || val == '--port') {
+        if (process.argv.length > index && process.argv[index + 1] !== undefined)
+            listenPort = process.argv[index + 1];
+    }
+});
 
 //создадим папку под логи, если ее нет
 fs.mkdirSync(logsPath, { recursive: true }, function(error) {
