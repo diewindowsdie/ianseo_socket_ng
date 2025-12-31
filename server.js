@@ -116,7 +116,11 @@ if (!serverPassed) {
 
 var app = express();
 var httpServer = http.createServer(app);
-httpServer.listen(listenPort);
+if (serviceMode) {
+    httpServer.listen(listenPort, "127.0.0.1");
+} else {
+    httpServer.listen(listenPort);
+}
 
 var wsServer = new WebSocketServer({
     httpServer: httpServer,
