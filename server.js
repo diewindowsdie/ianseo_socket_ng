@@ -184,8 +184,8 @@ wsServer.on('request', function (request) {
                         device: ianseoId,
                         index: ++nextControllerIndex
                     };
-                    var message = buildServerMessage("handshakeId", {socketId: ianseoId});
-                    send(connection, JSON.stringify(message));
+                    var msg = buildServerMessage("handshakeId", {socketId: ianseoId});
+                    send(connection, JSON.stringify(msg));
                 } else {
                     //регистрация телефона для ввода данных в сокете
                     tablets[rcvData.device] = {
